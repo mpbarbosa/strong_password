@@ -30,10 +30,16 @@ checkout principal.
   [`.claude/settings.json`](.claude/settings.json) (`worktree.baseRef`), como no `linkedin`. O `origin`
   fica rotineiramente vários commits atrás, e o default do harness (`fresh`) tira o worktree de
   `origin/<branch padrão>`: ele começaria de um repo velho, **em silêncio**.
-  ⚠️ **O arquivo foi criado em 2026-11-15 e o efeito ainda não foi medido aqui.** Uma sessão aberta
-  antes disso pode não o ter carregado, e `head` protege a **criação** do worktree, não os minutos
-  seguintes. ⇒ ao entrar no worktree, compare `git log --oneline -1` com o `main` local e, se estiver
-  atrás, `git merge main` antes da primeira edição.
+  📏 **Medido aqui em 2026-11-15 22:31 BRT, `n = 1`:** com a ref local `origin/main` um commit atrás do
+  `HEAD` (`e5a21f3` contra `6490ff3`), o worktree nasceu em `6490ff3` — do `HEAD` local — e a criação
+  **não fez fetch** (reflog de `origin/main` e mtime do `FETCH_HEAD` inalterados). **Valeu numa sessão
+  aberta antes de o arquivo existir.**
+  ⚠️ **Sem controle negativo:** ninguém trocou para `fresh` para ver o worktree nascer no outro commit.
+  ⚠️ **Para repetir a medição as duas refs têm de diferir:** com `main` = `origin/main`, `head` e
+  `fresh` dão o mesmo commit e o teste não distingue nada.
+  ⚠️ `head` protege a **criação** do worktree, não os minutos seguintes. ⇒ ao entrar no worktree,
+  compare `git log --oneline -1` com o `main` local e, se estiver atrás, `git merge main` antes da
+  primeira edição.
 - **O worktree envelhece enquanto você trabalha — e ref base certo não protege disso.** Medido no
   `linkedin` em 2026-10-05: um worktree criado às **20:55** estava **8 commits atrás** às 21:1x, porque
   duas outras sessões aterraram no intervalo. ⇒ **antes de escrever depois de um trecho longo,
