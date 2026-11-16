@@ -3,9 +3,10 @@
 #
 # O arquivo do repositório é um documento completo (doctype, <html>, <head>,
 # <body>). O host do artifact fornece esse esqueleto por conta própria, mais
-# charset e viewport, então publicar o documento inteiro aninharia um dentro do
-# outro. Este script remove exatamente essas linhas e deixa o resto intacto —
-# <title>, <meta name="claude:...">, <link>, <style> e o conteúdo.
+# charset, viewport e a própria política de segurança, então publicar o
+# documento inteiro aninharia um dentro do outro. Este script remove exatamente
+# essas linhas e deixa o resto intacto — <title>, <meta name="claude:...">,
+# <link>, <style> e o conteúdo.
 #
 #   bin/build-artifact.sh              # gera dist/artifact.html
 #   bin/build-artifact.sh -o -         # escreve na saída padrão
@@ -22,7 +23,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     -o) [ $# -ge 2 ] || { echo "build-artifact: -o exige um caminho" >&2; exit 2; }
         out="$2"; shift 2 ;;
-    -h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "build-artifact: opção desconhecida: $1" >&2; exit 2 ;;
     *)  [ -z "$src" ] || { echo "build-artifact: só um arquivo de entrada" >&2; exit 2; }
         src="$1"; shift ;;
@@ -45,6 +46,10 @@ recorta() {
     l ~ /^<body([ >]|$)/ || l == "</body>" { next }
     l ~ /^<meta[^>]*charset/           { next }
     l ~ /^<meta[^>]*name="viewport"/   { next }
+    # A CSP da página vale para o arquivo standalone. Dentro do artifact ela
+    # ficaria fora do <head> (ignorada) ou valeria contra o host, cujo runtime
+    # ela não conhece — e o host já impõe a própria política.
+    l ~ /^<meta[^>]*http-equiv=[^>]*content-security-policy/ { next }
     { linhas[n++] = $0 }
     END {
       inicio = 0; fim = n - 1
@@ -67,6 +72,7 @@ recorta > "$out"
 sobrou=$(awk '
   { l = tolower($0); sub(/^[ \t]+/, "", l); sub(/[ \t]+$/, "", l) }
   l ~ /^<!doctype/ || l ~ /^<\/?html([ >]|$)/ || l ~ /^<\/?head([ >]|$)/ || l ~ /^<\/?body([ >]|$)/ \
+    || l ~ /^<meta[^>]*http-equiv=[^>]*content-security-policy/ \
     { print FILENAME ":" FNR ": " $0 }
 ' "$out")
 
