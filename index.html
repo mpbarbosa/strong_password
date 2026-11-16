@@ -1,0 +1,490 @@
+<title>Senha Forte</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  /* Layout: uma coluna central estreita — painel da senha no topo, parametros abaixo. */
+  :root {
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --ink: #15181f;
+    --muted: #5c6472;
+    --line: #dfe3ea;
+    --accent: #2d4bc4;
+    --accent-soft: #eaeefb;
+    --ok: #15804a;
+    --warn: #a86604;
+    --bad: #c0352e;
+    --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101217;
+      --surface: #191c23;
+      --ink: #eaedf3;
+      --muted: #9aa3b2;
+      --line: #292e38;
+      --accent: #93a7ff;
+      --accent-soft: #1d2334;
+      --ok: #45c585;
+      --warn: #e0a33c;
+      --bad: #f0736b;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101217;
+    --surface: #191c23;
+    --ink: #eaedf3;
+    --muted: #9aa3b2;
+    --line: #292e38;
+    --accent: #93a7ff;
+    --accent-soft: #1d2334;
+    --ok: #45c585;
+    --warn: #e0a33c;
+    --bad: #f0736b;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 580px;
+    margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 32px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 17px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  header p { margin: 0; font-size: 13px; color: var(--muted); }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* --- senha --- */
+  .out {
+    font-family: var(--font-mono);
+    font-size: clamp(19px, 5.2vw, 26px);
+    font-weight: 700;
+    line-height: 1.35;
+    word-break: break-all;
+    min-height: 2.7em;
+    display: flex;
+    align-items: center;
+    user-select: all;
+    min-width: 0;
+  }
+  .out .d { color: var(--accent); }
+  .out .s { color: var(--warn); }
+  .out.empty { color: var(--muted); font-family: var(--font-ui); font-size: 15px; font-weight: 400; }
+
+  .meter-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .meter { flex: 1; min-width: 0; height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 0; border-radius: 99px; transition: width .2s ease, background-color .2s ease; }
+  .lvl { font-weight: 600; white-space: nowrap; }
+  .bad .lvl, .bad .meter i { color: var(--bad); background-color: var(--bad); }
+  .warn .lvl, .warn .meter i { color: var(--warn); background-color: var(--warn); }
+  .ok .lvl, .ok .meter i { color: var(--ok); background-color: var(--ok); }
+  .lvl { background: none !important; }
+
+  .facts { margin: 0; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .facts b { color: var(--ink); font-weight: 600; }
+
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  button {
+    font: inherit;
+    font-weight: 500;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: border-color .15s, background-color .15s;
+  }
+  button:hover { border-color: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; flex: 1; min-width: 140px; }
+  :root[data-theme="dark"] button.primary,
+  button.primary { color: #fff; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.primary { color: #0e1016; } }
+  :root[data-theme="dark"] button.primary { color: #0e1016; }
+  button.primary:hover { filter: brightness(1.08); }
+  button[disabled] { opacity: .5; cursor: not-allowed; }
+
+  /* --- parametros --- */
+  fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  legend, .label {
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .len { display: flex; align-items: center; gap: 14px; }
+  .len output {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 20px;
+    min-width: 2.2ch;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent); height: 24px; }
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; }
+  .presets button { padding: 5px 10px; font-size: 12.5px; border-radius: 8px; color: var(--muted); }
+  .presets button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+  .opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+  @media (max-width: 420px) { .opts { grid-template-columns: 1fr; } }
+  label.opt { display: flex; align-items: center; gap: 9px; cursor: pointer; min-width: 0; }
+  label.opt input { width: 17px; height: 17px; accent-color: var(--accent); flex: none; margin: 0; }
+  label.opt code { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); }
+  label.opt.off { opacity: .55; }
+
+  hr { border: 0; border-top: 1px solid var(--line); margin: 2px 0; }
+
+  .warning { font-size: 13px; color: var(--bad); margin: 0; }
+
+  /* --- historico --- */
+  .hist { display: flex; flex-direction: column; gap: 8px; }
+  .hist ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .hist li { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .hist span {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+  .hist button { padding: 4px 10px; font-size: 12px; border-radius: 7px; flex: none; }
+  .note { font-size: 12px; color: var(--muted); margin: 0; }
+
+  footer { font-size: 12px; color: var(--muted); text-align: center; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Senha Forte</h1>
+    <p>Gerada no seu navegador, nunca enviada a ninguém.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="h-out">
+    <h2 id="h-out" class="label">Senha</h2>
+    <div class="out empty" id="out" role="status" aria-live="polite" aria-atomic="true">Escolha ao menos um tipo de caractere.</div>
+
+    <div class="meter-row ok" id="strength">
+      <div class="meter"><i id="bar"></i></div>
+      <span class="lvl" id="lvl">—</span>
+    </div>
+    <p class="facts" id="facts"></p>
+
+    <div class="actions">
+      <button type="button" class="primary" id="gen">Gerar nova senha</button>
+      <button type="button" id="copy">Copiar</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <fieldset>
+      <legend>Comprimento</legend>
+      <div class="len">
+        <input type="range" id="len" min="6" max="64" step="1" value="20" aria-label="Comprimento da senha">
+        <output for="len" id="lenOut">20</output>
+      </div>
+      <div class="presets" id="presets">
+        <button type="button" data-len="12">12</button>
+        <button type="button" data-len="16">16</button>
+        <button type="button" data-len="20">20</button>
+        <button type="button" data-len="32">32</button>
+        <button type="button" data-len="64">64</button>
+      </div>
+    </fieldset>
+
+    <hr>
+
+    <fieldset>
+      <legend>Caracteres</legend>
+      <div class="opts">
+        <label class="opt"><input type="checkbox" id="up" checked> Maiúsculas <code>A-Z</code></label>
+        <label class="opt"><input type="checkbox" id="low" checked> Minúsculas <code>a-z</code></label>
+        <label class="opt"><input type="checkbox" id="dig" checked> Números <code>0-9</code></label>
+        <label class="opt"><input type="checkbox" id="sym" checked> Símbolos <code>!@#$%</code></label>
+      </div>
+      <p class="warning" id="warn" hidden>Selecione ao menos um tipo de caractere.</p>
+    </fieldset>
+
+    <hr>
+
+    <fieldset>
+      <legend>Regras</legend>
+      <div class="opts">
+        <label class="opt" id="lab-amb"><input type="checkbox" id="amb"> Evitar ambíguos <code>l 1 I O 0</code></label>
+        <label class="opt" id="lab-norep"><input type="checkbox" id="norep"> Sem caracteres repetidos</label>
+        <label class="opt" id="lab-each"><input type="checkbox" id="each" checked> Um de cada tipo escolhido</label>
+      </div>
+    </fieldset>
+  </section>
+
+  <section class="panel hist" hidden id="histBox">
+    <h2 class="label">Geradas nesta sessão</h2>
+    <ul id="hist"></ul>
+    <p class="note">Ficam apenas na memória desta aba. Fechar a página apaga tudo.</p>
+  </section>
+
+  <footer>Aleatoriedade de <code>crypto.getRandomValues</code>. Nada sai deste dispositivo.</footer>
+</div>
+
+<script>
+(function () {
+  var SETS = {
+    up:  "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    low: "abcdefghijklmnopqrstuvwxyz",
+    dig: "0123456789",
+    sym: "!@#$%&*-_=+?/.,:;()[]{}<>~^"
+  };
+  var AMBIGUOUS = "il1LIoO05S2Z8B|`'\";:.,";
+
+  var el = {};
+  ["out","bar","lvl","strength","facts","gen","copy","len","lenOut","presets","up","low","dig","sym","amb","norep","each","warn","hist","histBox","lab-norep"].forEach(function (id) {
+    el[id] = document.getElementById(id);
+  });
+
+  var history = [];
+
+  /* ---- aleatoriedade sem viés ---- */
+  function randInt(max) {
+    if (max <= 0) return 0;
+    var limit = Math.floor(4294967296 / max) * max;
+    var buf = new Uint32Array(1);
+    var v;
+    do { crypto.getRandomValues(buf); v = buf[0]; } while (v >= limit);
+    return v % max;
+  }
+  function pick(str) { return str.charAt(randInt(str.length)); }
+  function shuffle(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = randInt(i + 1), t = arr[i];
+      arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  /* ---- estado ---- */
+  function activeSets() {
+    var out = [];
+    ["up","low","dig","sym"].forEach(function (k) {
+      if (!el[k].checked) return;
+      var s = SETS[k];
+      if (el.amb.checked) {
+        s = s.split("").filter(function (c) { return AMBIGUOUS.indexOf(c) === -1; }).join("");
+      }
+      if (s.length) out.push(s);
+    });
+    return out;
+  }
+
+  function generate() {
+    var sets = activeSets();
+    var len = parseInt(el.len.value, 10);
+    var pool = sets.join("");
+
+    el.warn.hidden = sets.length > 0;
+    if (!sets.length) {
+      el.out.textContent = "Selecione ao menos um tipo de caractere.";
+      el.out.className = "out empty";
+      el.copy.disabled = true;
+      el.bar.style.width = "0";
+      el.lvl.textContent = "—";
+      el.facts.textContent = "";
+      return;
+    }
+
+    var unique = el.norep.checked && len <= pool.length;
+    el["lab-norep"].classList.toggle("off", el.norep.checked && !unique);
+
+    var chars = [];
+    var available = pool;
+
+    function take(from) {
+      var c = pick(from);
+      if (unique) {
+        available = available.split("").filter(function (x) { return x !== c; }).join("");
+      }
+      return c;
+    }
+
+    if (el.each.checked && sets.length <= len) {
+      sets.forEach(function (s) {
+        var src = unique ? s.split("").filter(function (c) { return available.indexOf(c) !== -1; }).join("") : s;
+        if (src.length) chars.push(take(src));
+      });
+    }
+    while (chars.length < len && (!unique || available.length)) {
+      chars.push(take(unique ? available : pool));
+    }
+    shuffle(chars);
+
+    var pwd = chars.join("");
+    render(pwd, pool.length, chars.length);
+    remember(pwd);
+  }
+
+  function render(pwd, poolSize, len) {
+    el.out.className = "out";
+    el.out.innerHTML = "";
+    pwd.split("").forEach(function (c) {
+      var span = document.createElement("span");
+      span.textContent = c;
+      if (/[0-9]/.test(c)) span.className = "d";
+      else if (!/[a-zA-Z]/.test(c)) span.className = "s";
+      el.out.appendChild(span);
+    });
+    el.copy.disabled = false;
+    el.copy.textContent = "Copiar";
+
+    var bits = len * (Math.log(poolSize) / Math.log(2));
+    var level = bits < 45 ? ["bad", "Fraca"] : bits < 65 ? ["warn", "Razoável"] : bits < 90 ? ["ok", "Forte"] : ["ok", "Excelente"];
+    el.strength.className = "meter-row " + level[0];
+    el.lvl.textContent = level[1];
+    el.bar.style.width = Math.min(100, (bits / 110) * 100) + "%";
+    el.facts.innerHTML = "<b>" + bits.toFixed(0) + " bits</b> de entropia · " + poolSize +
+      " caracteres possíveis · quebra por força bruta em <b>" + crackTime(bits) + "</b>";
+  }
+
+  function crackTime(bits) {
+    var seconds = Math.pow(2, bits - 1) / 1e12; // 1 trilhão de tentativas por segundo
+    if (seconds < 1) return "menos de 1 segundo";
+    var units = [[60, "segundo", "segundos"], [60, "minuto", "minutos"], [24, "hora", "horas"], [365, "dia", "dias"]];
+    var v = seconds;
+    for (var i = 0; i < units.length; i++) {
+      if (v < units[i][0]) return fmt(v) + " " + (v < 2 ? units[i][1] : units[i][2]);
+      v = v / units[i][0];
+    }
+    var scale = [[1e3, ""], [1e6, " mil"], [1e9, " milhões de"], [1e12, " bilhões de"], [1e15, " trilhões de"]];
+    for (var j = 0; j < scale.length; j++) {
+      if (v < scale[j][0]) {
+        var n = j === 0 ? v : v / (scale[j][0] / 1e3);
+        return fmt(n) + scale[j][1] + " anos";
+      }
+    }
+    return "mais de um quatrilhão de anos";
+  }
+  function fmt(n) {
+    return n >= 100 ? Math.round(n).toLocaleString("pt-BR")
+         : n >= 10  ? n.toFixed(0)
+         : n.toFixed(1).replace(".", ",").replace(",0", "");
+  }
+
+  function remember(pwd) {
+    history.unshift(pwd);
+    history = history.slice(0, 5);
+    el.histBox.hidden = history.length < 2;
+    el.hist.innerHTML = "";
+    history.slice(1).forEach(function (p) {
+      var li = document.createElement("li");
+      var span = document.createElement("span");
+      span.textContent = p;
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = "Copiar";
+      b.addEventListener("click", function () { toClipboard(p, b); });
+      li.appendChild(span);
+      li.appendChild(b);
+      el.hist.appendChild(li);
+    });
+  }
+
+  function toClipboard(text, btn) {
+    var done = function () {
+      var old = btn.textContent;
+      btn.textContent = "Copiado";
+      setTimeout(function () { btn.textContent = old; }, 1400);
+    };
+    try {
+      navigator.clipboard.writeText(text).then(done, function () { selectOut(btn); });
+    } catch (e) { selectOut(btn); }
+  }
+  function selectOut(btn) {
+    try {
+      var r = document.createRange();
+      r.selectNodeContents(el.out);
+      var sel = getSelection();
+      sel.removeAllRanges();
+      sel.addRange(r);
+      btn.textContent = "Use Ctrl+C";
+    } catch (e) { btn.textContent = "Copie manualmente"; }
+  }
+
+  /* ---- preferências (não guarda senhas) ---- */
+  var KEY = "senha-forte-prefs";
+  function save() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({
+        len: el.len.value, up: el.up.checked, low: el.low.checked,
+        dig: el.dig.checked, sym: el.sym.checked,
+        amb: el.amb.checked, norep: el.norep.checked, each: el.each.checked
+      }));
+    } catch (e) {}
+  }
+  function load() {
+    try {
+      var p = JSON.parse(localStorage.getItem(KEY) || "null");
+      if (!p) return;
+      if (p.len) el.len.value = p.len;
+      ["up","low","dig","sym","amb","norep","each"].forEach(function (k) {
+        if (typeof p[k] === "boolean") el[k].checked = p[k];
+      });
+    } catch (e) {}
+  }
+
+  function syncLen() {
+    el.lenOut.textContent = el.len.value;
+    [].forEach.call(el.presets.children, function (b) {
+      b.setAttribute("aria-pressed", b.dataset.len === el.len.value);
+    });
+  }
+
+  /* ---- eventos ---- */
+  el.len.addEventListener("input", function () { syncLen(); generate(); save(); });
+  el.presets.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-len]");
+    if (!b) return;
+    el.len.value = b.dataset.len;
+    syncLen(); generate(); save();
+  });
+  ["up","low","dig","sym","amb","norep","each"].forEach(function (k) {
+    el[k].addEventListener("change", function () { generate(); save(); });
+  });
+  el.gen.addEventListener("click", generate);
+  el.copy.addEventListener("click", function () { toClipboard(el.out.textContent, el.copy); });
+
+  load();
+  syncLen();
+  generate();
+})();
+</script>
