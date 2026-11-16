@@ -30,6 +30,16 @@ SELF_REFERENCES = (
     '<meta property="og:url" content="%s">' % SITE_URL,
 )
 
+# Os links de quem mantém a página, no rodapé: os únicos endereços de saída.
+# O navegador não busca nenhum deles — só navega se a pessoa clicar — e por isso
+# a CSP não muda. Cada tag vale uma vez, escrita exatamente assim; o mesmo
+# endereço em qualquer outro lugar (script, imagem, outro link) é reprovado.
+KEEPER_LINKS = (
+    '<a href="https://www.mpbarbosa.com" rel="me">',
+    '<a href="https://github.com/mpbarbosa" rel="me">',
+    '<a href="https://www.linkedin.com/in/mpbarbosa" rel="me noopener">',
+)
+
 # O que os buscadores mostram: acima disto o resultado sai cortado.
 TITLE_MAX = 60
 DESCRIPTION_RANGE = (70, 160)
@@ -179,7 +189,7 @@ def check_network(html):
 def check_urls(html):
     errors = []
     # Uma vez cada: uma segunda cópia da tag sobra no texto e é reprovada.
-    for ref in SELF_REFERENCES:
+    for ref in SELF_REFERENCES + KEEPER_LINKS:
         html = html.replace(ref, "", 1)
     for m in re.finditer(r"(?:https?:)?//([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)", html):
         host = m.group(1).lower()

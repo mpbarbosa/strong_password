@@ -378,6 +378,12 @@
     color: var(--muted);
   }
   footer code { font-family: var(--font-mono); font-size: 12px; }
+  footer p { margin: 0; }
+  footer p + p { margin-top: 8px; }
+  /* Quem mantém a página. São os únicos links de saída, e só navegam se clicados. */
+  footer .me a { color: var(--ink); font-weight: 600; text-decoration: none; }
+  footer .me a:hover { text-decoration: underline; }
+  footer .me a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
 
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
@@ -482,7 +488,13 @@
     </details>
   </section>
 
-  <footer>Aleatoriedade de <code>crypto.getRandomValues</code>. Tempo de quebra estimado a 1 trilhão de tentativas por segundo.</footer>
+  <footer>
+    <p>Aleatoriedade de <code>crypto.getRandomValues</code>. Tempo de quebra estimado a 1 trilhão de tentativas por segundo.</p>
+    <p class="me">Mantido por Marcelo Pereira Barbosa &mdash;
+      <a href="https://www.mpbarbosa.com" rel="me">página pessoal</a> &middot;
+      <a href="https://github.com/mpbarbosa" rel="me">portfólio</a> &middot;
+      <a href="https://www.linkedin.com/in/mpbarbosa" rel="me noopener">LinkedIn</a></p>
+  </footer>
 </div>
 
 <script>

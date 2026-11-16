@@ -118,6 +118,9 @@ CASES = [
     ("descrição no limite superior", description("x" * check.DESCRIPTION_RANGE[1]), set()),
     ("meta robots que permite indexar",
      head_line('<meta name="robots" content="index, follow">'), set()),
+    ("texto de um link do mantenedor reescrito",
+     lambda h: swap(h, check.KEEPER_LINKS[0] + "página pessoal</a>",
+                    check.KEEPER_LINKS[0] + "site</a>"), set()),
 
     # --- structure ----------------------------------------------------------
     ("handler inline", lambda h: swap(h, '<button', '<button onclick="x()"'), {"structure"}),
@@ -176,6 +179,22 @@ CASES = [
     ("endereço do site dentro do script", js('var u = "%s";' % check.SITE_URL), {"urls"}),
     ("imagem servida do próprio site",
      lambda h: swap(h, "</body>", '<img src="%sp.gif" alt="">\n</body>' % check.SITE_URL),
+     {"urls"}),
+    # Os links do mantenedor só valem como estão: aquela tag, uma vez cada.
+    ("link do mantenedor para outro domínio",
+     lambda h: swap(h, check.KEEPER_LINKS[0], '<a href="https://evil.example" rel="me">'),
+     {"urls"}),
+    ("link do mantenedor para outro perfil",
+     lambda h: swap(h, check.KEEPER_LINKS[2],
+                    '<a href="https://www.linkedin.com/in/outro" rel="me noopener">'),
+     {"urls"}),
+    ("segundo link para o mesmo endereço do mantenedor",
+     lambda h: swap(h, "</footer>", check.KEEPER_LINKS[1] + "de novo</a>\n</footer>"),
+     {"urls"}),
+    ("endereço do mantenedor dentro do script",
+     js('var u = "https://github.com/mpbarbosa";'), {"urls"}),
+    ("imagem servida do site do mantenedor",
+     lambda h: swap(h, "</body>", '<img src="https://www.mpbarbosa.com/p.gif" alt="">\n</body>'),
      {"urls"}),
 
     # --- storage ------------------------------------------------------------
