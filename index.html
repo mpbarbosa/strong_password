@@ -581,7 +581,7 @@
       var t = document.createElement("span");
       t.textContent = "Copiar";
       b.appendChild(t);
-      b.addEventListener("click", function () { toClipboard(p, b); });
+      b.addEventListener("click", function () { toClipboard(p, b, span); });
       li.appendChild(span);
       li.appendChild(b);
       el.hist.appendChild(li);
@@ -596,16 +596,18 @@
     setLabel(btn, text);
     btn._t = setTimeout(function () { setLabel(btn, "Copiar"); }, 1600);
   }
-  function toClipboard(text, btn) {
+  /* node = elemento que mostra a senha; se a área de transferência falhar,
+     é ele que fica selecionado para o Ctrl+C manual. */
+  function toClipboard(text, btn, node) {
     var done = function () { flashLabel(btn, "Copiada"); };
     try {
-      navigator.clipboard.writeText(text).then(done, function () { selectOut(btn); });
-    } catch (e) { selectOut(btn); }
+      navigator.clipboard.writeText(text).then(done, function () { selectText(node, btn); });
+    } catch (e) { selectText(node, btn); }
   }
-  function selectOut(btn) {
+  function selectText(node, btn) {
     try {
       var r = document.createRange();
-      r.selectNodeContents(el.out);
+      r.selectNodeContents(node);
       var sel = getSelection();
       sel.removeAllRanges();
       sel.addRange(r);
@@ -663,7 +665,7 @@
   el.copy.addEventListener("click", function () {
     if (!current) return;
     topKept = true;
-    toClipboard(current, el.copy);
+    toClipboard(current, el.copy, el.out);
   });
 
   load();
