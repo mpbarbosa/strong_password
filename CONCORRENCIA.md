@@ -56,12 +56,46 @@ por unidade; **aqui essa defesa não existe e não deve existir** — o arquivo 
 quando os trechos são distintos e conflita quando coincidem — e ⚠️ **mescla limpa não é mescla certa**:
 a paleta escura é declarada **duas vezes** (`CLAUDE.md`, *Theme tokens are duplicated*), e uma sessão
 que mude uma cópia enquanto outra muda a outra passa sem conflito e deixa os temas divergirem.
+✅ **A guarda `theme` do `check.py` acusa exatamente essa divergência** — mas só para quem a roda
+**depois** do merge.
 
 - **Diga na coluna de escopo do ledger QUAL parte do `index.html`** você vai mexer (CSS/tema, marcação,
   `generate()`, leitura de força, histórico), não só o nome do arquivo.
-- **Depois de trazer o `main` e antes de aterrar, abra a página.** Não há suíte nem linter aqui:
-  a única conferência é o navegador, e ela tem de ser feita **depois** do merge, porque o que entra no
-  merge é de outras sessões.
+- **Depois de trazer o `main` e antes de aterrar, rode as guardas e abra a página — as duas coisas, e
+  DEPOIS do merge**, porque o que entra no merge é de outras sessões:
+
+  ```sh
+  python3 .github/scripts/check.py
+  ```
+
+  🔧 **Corrigido em 2026-11-15:** este item dizia *"não há suíte nem linter aqui: a única conferência
+  é o navegador"*. Deixou de valer no mesmo dia, quando o `check.py` aterrou (`e9286a6`).
+  - **O `check.py` segura o que a página PROMETE, não o que ela faz.** São guardas nomeadas —
+    `structure`, `syntax`, `csp`, `random`, `network`, `urls`, `storage`, `theme` — e o que cada uma
+    protege está no [`CLAUDE.md`](CLAUDE.md). Ele lê só o `index.html` e sai `1` se alguma reprovar.
+    A `syntax` precisa do `node`: sem ele ela **reprova**, não pula.
+  - ⚠️ **Verde no `check.py` não é página funcionando.** Ele não gera senha, não confere a leitura de
+    força e não olha o layout ⇒ **o navegador continua obrigatório**. O `check.py` é a conferência que
+    faltava, não a substituta da que havia.
+  - ⏱️ **O CI roda o mesmo comando, mas TARDE para quem aterra por merge local.** Num PR ele roda antes
+    do merge; no caminho do passo 3 + `push origin main` ele só roda **depois** do push, com o commit
+    já no `main`. Um `check` vermelho ali segura o **deploy**, não o commit ⇒ rode localmente antes de
+    empurrar.
+  - Quem mexer no próprio `check.py` roda também `python3 .github/scripts/test_check.py`, que prova
+    por mutação que cada guarda ainda reprova o que deveria.
+- **O hash da CSP é um segundo ponto de colisão, e este CONFLITA — derivado da estrutura, não medido.**
+  A `<meta http-equiv="Content-Security-Policy">` do `<head>` carrega o SHA-256 do `<script>` inteiro,
+  e toda sessão que edita o script roda `check.py --fix`, que reescreve **essa mesma linha**. ⇒ duas
+  sessões que mexeram no script, mesmo em funções diferentes, conflitam ali. 🔑 **Nenhum dos dois
+  hashes está certo depois do merge:** cada um é do script de uma sessão só.
+  ⇒ resolva o conflito ficando com **qualquer** um dos lados e rode em seguida
+
+  ```sh
+  python3 .github/scripts/check.py --fix
+  ```
+
+  ⛔ **Nunca escolha um hash à mão.** Com o hash errado o navegador recusa executar o script; a guarda
+  `csp` acusa isso antes, se for rodada.
 
 ## Aterrar o trabalho — nesta ordem, porque o atalho é bloqueado
 
@@ -70,9 +104,11 @@ que mude uma cópia enquanto outra muda a outra passa sem conflito e deixa os te
 do worktree** — inclusive heredoc longo, `$(...)` e pipeline complexo (verificado no `linkedin` em
 2026-09-30 e de novo em 2026-10-01). Então o merge é o último passo, não algo feito de dentro:
 
-0. 🏠 **Traga o `main` para dentro do worktree (`git merge main`) e confira a página DEPOIS disso**,
-   não antes. No `linkedin` este passo é um painel de guardas que não existe aqui; o que foi trazido é
-   a ordem — o que entra no merge é de outras sessões, e é aí que a divergência aparece.
+0. 🏠 **Traga o `main` para dentro do worktree (`git merge main`) e confira DEPOIS disso**, não antes:
+   `python3 .github/scripts/check.py` e a página no navegador. No `linkedin` este passo é um painel de
+   guardas; aqui, desde 2026-11-15, é o `check.py` — menor, e só sobre o `index.html`. O que foi
+   trazido de lá é a ordem — o que entra no merge é de outras sessões, e é aí que a divergência
+   aparece.
 1. Commite no worktree como de hábito.
 2. `ExitWorktree(action: "keep")` — a sessão volta para o checkout raiz e o isolamento cai. **Keep, não
    remove**: o branch ainda tem a única cópia do trabalho.
@@ -258,7 +294,8 @@ entre o trabalho de duas sessões.
 
 ⚠️ **Nunca resolva conflito com `--ours`/`--theirs` em bloco.** Os dois lados são trabalho de alguém;
 perder um é a falha silenciosa que toda a estrutura existe para evitar. 🏠 Aqui o conflito cai quase
-sempre no `index.html`: resolva trecho a trecho, e abra a página depois.
+sempre no `index.html`: resolva trecho a trecho; depois rode o `check.py` (com `--fix` se o conflito
+foi na linha da CSP) e abra a página.
 
 🏠 As regras por arquivo do `linkedin` não foram trazidas, mas uma delas generaliza: ***"fique com os
 dois lados"* não é sempre a resolução certa.** Quando os dois lados editaram a **MESMA** unidade (lá, a
