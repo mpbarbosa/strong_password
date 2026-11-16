@@ -331,6 +331,46 @@
   .hist button { flex: none; padding: 5px 12px; font-size: 13px; margin-right: -12px; border-color: transparent; color: var(--muted); }
   .hist button:hover { color: var(--ink); border-color: transparent; background: var(--line); }
 
+  /* --- perguntas --- */
+  /* Cada pergunta é um <details>: o texto está no documento para quem lê e para
+     os buscadores, e a página continua curta. Sem script. */
+  .faq { gap: 0; padding-top: 24px; border-top: 1px solid var(--line); }
+  .faq .label { margin-bottom: 6px; }
+  .faq details + details { border-top: 1px solid var(--line); }
+  .faq summary {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 0;
+    cursor: pointer;
+    list-style: none;
+    border-radius: 4px;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after {
+    content: "+";
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 16px;
+    line-height: 1;
+    color: var(--muted);
+  }
+  .faq details[open] > summary::after { content: "\2212"; }
+  .faq summary:hover::after { color: var(--ink); }
+  .faq summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .faq h3 { margin: 0; font: inherit; font-weight: 500; }
+  .faq details p {
+    margin: 0;
+    padding-bottom: 16px;
+    max-width: 62ch;
+    font-size: 14px;
+    color: var(--muted);
+    text-wrap: pretty;
+  }
+  .faq details p + p { margin-top: -6px; }
+  .faq details code { font-family: var(--font-mono); font-size: 13px; }
+
   footer {
     padding-top: 20px;
     border-top: 1px solid var(--line);
@@ -423,6 +463,29 @@
     <h2 class="label" id="l-hist">Anteriores</h2>
     <ul id="hist"></ul>
     <p class="hint">Ficam só na memória desta aba. Fechar a página apaga tudo.</p>
+  </section>
+
+  <section class="group faq" aria-labelledby="l-faq">
+    <h2 class="label" id="l-faq">Perguntas frequentes</h2>
+    <details>
+      <summary><h3>O que torna uma senha forte?</h3></summary>
+      <p>Ser aleatória, longa e usada em uma conta só. O comprimento pesa mais que a variedade: cada caractere a mais multiplica o número de combinações que um atacante teria de testar.</p>
+      <p>Com maiúsculas, minúsculas, números e símbolos, 12 caracteres dão 78 bits de entropia, 16 dão 104 e os 20 que esta página sugere dão 130.</p>
+    </details>
+    <details>
+      <summary><h3>Como a força é calculada?</h3></summary>
+      <p>A entropia é o comprimento multiplicado pelo logaritmo, na base 2, do número de caracteres possíveis. Abaixo de 45 bits a senha é fraca; de 45 a 64, razoável; de 65 a 89, forte; a partir de 90, excelente.</p>
+      <p>O tempo de quebra supõe um atacante que testa 1 trilhão de combinações por segundo e acerta, em média, depois de percorrer metade delas. É uma estimativa: as regras “sem caracteres repetidos” e “ao menos um de cada tipo” reduzem um pouco o número real de combinações, e a conta não leva isso em consideração.</p>
+    </details>
+    <details>
+      <summary><h3>É seguro gerar a senha em uma página da web?</h3></summary>
+      <p>A senha é criada no seu navegador, pelo gerador criptográfico do próprio sistema (<code>crypto.getRandomValues</code>), e não é enviada a lugar nenhum: a única coisa que esta página busca na rede são as fontes tipográficas.</p>
+      <p>Nenhuma senha é gravada. As anteriores ficam na memória da aba e somem quando ela é fechada; neste dispositivo ficam salvas apenas as suas preferências, como o comprimento e as opções marcadas.</p>
+    </details>
+    <details>
+      <summary><h3>Onde guardar a senha gerada?</h3></summary>
+      <p>Em um gerenciador de senhas. Uma senha aleatória não foi feita para ser decorada, e cada conta deve ter a sua: assim, o vazamento de um serviço não abre os outros.</p>
+    </details>
   </section>
 
   <footer>
