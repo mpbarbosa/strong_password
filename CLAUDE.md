@@ -22,6 +22,15 @@ The only script is `bin/build-artifact.sh`, which cuts `index.html` down to the 
 bin/build-artifact.sh
 ```
 
+## Concurrent sessions
+
+More than one Claude session may write to this repository at the same time. **The conventions are in [`CONCORRENCIA.md`](CONCORRENCIA.md)** (in Portuguese, imported from a sibling repository) — read it before the first edit. What you need before you get there:
+
+- A session that is going to write calls `EnterWorktree` first, before the first edit. Read-only sessions may stay in the main checkout, which is the merge target and is not edited directly.
+- Live state — who holds which worktree right now — is in the ledger `.claude/worktrees/COORDENACAO.md` of the **root checkout**. It is gitignored and does not exist inside a worktree, so resolve it from the first line of `git worktree list`. Read it when choosing a task, and add your line when you create the worktree.
+- Stage files by name, never `git add -A` or `git add .`, and never a bare `git stash`: the working tree and the stash stack are shared.
+- `git push origin main` needs the user's OK in this repository, always with the remote and ref spelled out, and never `--force`.
+
 ## Things to know before editing
 
 **`index.html` began as a Claude artifact page fragment.** The `claude:viewport-fit-sides` meta tag is a leftover of that format, where the host supplies the document skeleton. The file is now a complete standalone document (doctype, `lang="pt-BR"`, charset, viewport), but its contents are deliberately not indented under `<head>`/`<body>`. The page is still published as an artifact as well, and that format has not changed: `bin/build-artifact.sh` drops the doctype, `<html>`, `<head>`, `<body>` and the charset/viewport metas — the host supplies them — and keeps everything else, including that meta tag. Republishing means running it and publishing `dist/artifact.html`, never `index.html`.

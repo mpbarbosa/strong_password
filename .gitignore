@@ -147,3 +147,6 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Claude Code: worktrees de sessão e o ledger local (ver CONCORRENCIA.md)
+.claude/worktrees/
