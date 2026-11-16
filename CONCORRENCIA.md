@@ -30,11 +30,21 @@ checkout principal.
   [`.claude/settings.json`](.claude/settings.json) (`worktree.baseRef`), como no `linkedin`. O `origin`
   fica rotineiramente vários commits atrás, e o default do harness (`fresh`) tira o worktree de
   `origin/<branch padrão>`: ele começaria de um repo velho, **em silêncio**.
-  📏 **Medido aqui em 2026-11-15 22:31 BRT, `n = 1`:** com a ref local `origin/main` um commit atrás do
-  `HEAD` (`e5a21f3` contra `6490ff3`), o worktree nasceu em `6490ff3` — do `HEAD` local — e a criação
-  **não fez fetch** (reflog de `origin/main` e mtime do `FETCH_HEAD` inalterados). **Valeu numa sessão
-  aberta antes de o arquivo existir.**
-  ⚠️ **Sem controle negativo:** ninguém trocou para `fresh` para ver o worktree nascer no outro commit.
+  📏 **Medido aqui em 2026-11-15, em três pernas (A-B-A, uma criação por perna),** sempre com o `HEAD`
+  local e a ref local `origin/main` em commits diferentes; só o valor de `baseRef` mudou:
+
+  | `baseRef` em vigor | `HEAD` local | `origin/main` local | worktree nasceu em |
+  |---|---|---|---|
+  | `head` (22:31) | `6490ff3` | `e5a21f3` | `6490ff3` — o `HEAD` |
+  | `fresh` (22:39, controle negativo) | `5758fc7` | `6e6ca1c` | `6e6ca1c` — o `origin/main` |
+  | `head` (22:39, de volta) | `5758fc7` | `6e6ca1c` | `5758fc7` — o `HEAD` |
+
+  🔑 **`fresh` usa a ref LOCAL `origin/main` e não faz fetch antes de criar** (reflog de `origin/main`
+  sem entrada nova segundos depois) ⇒ com ele, uma ref local velha dá um worktree velho, em silêncio.
+  **A troca de valor vale na mesma sessão, nos dois sentidos, sem reiniciar** — e o `head` valeu numa
+  sessão aberta antes de o arquivo existir. O `fresh` do controle veio de um
+  `.claude/settings.local.json` temporário, já apagado; nenhuma outra fonte definia `worktree.baseRef`
+  na máquina em que isto foi medido.
   ⚠️ **Para repetir a medição as duas refs têm de diferir:** com `main` = `origin/main`, `head` e
   `fresh` dão o mesmo commit e o teste não distingue nada.
   ⚠️ `head` protege a **criação** do worktree, não os minutos seguintes. ⇒ ao entrar no worktree,
