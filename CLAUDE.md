@@ -8,7 +8,7 @@ A password generator delivered as one self-contained file, `index.html` (inline 
 
 ## Commands
 
-There is no build, package manifest, linter or test suite. The `.gitignore` is the stock Node template and does not reflect any tooling.
+There is no package manifest, linter or test suite, and nothing to build before opening the page. The `.gitignore` is the stock Node template and does not reflect any tooling.
 
 To run it, open `index.html` in a browser or serve the directory statically:
 
@@ -16,9 +16,15 @@ To run it, open `index.html` in a browser or serve the directory statically:
 python3 -m http.server 8000
 ```
 
+The only script is `bin/build-artifact.sh`, which cuts `index.html` down to the fragment the Claude artifact host expects. It writes `dist/artifact.html` (gitignored, since it is derived), or to stdout with `-o -`:
+
+```bash
+bin/build-artifact.sh
+```
+
 ## Things to know before editing
 
-**`index.html` began as a Claude artifact page fragment.** The `claude:viewport-fit-sides` meta tag is a leftover of that format, where the host supplies the document skeleton. The file is now a complete standalone document (doctype, `lang="pt-BR"`, charset, viewport), but its contents are deliberately not indented under `<head>`/`<body>`.
+**`index.html` began as a Claude artifact page fragment.** The `claude:viewport-fit-sides` meta tag is a leftover of that format, where the host supplies the document skeleton. The file is now a complete standalone document (doctype, `lang="pt-BR"`, charset, viewport), but its contents are deliberately not indented under `<head>`/`<body>`. The page is still published as an artifact as well, and that format has not changed: `bin/build-artifact.sh` drops the doctype, `<html>`, `<head>`, `<body>` and the charset/viewport metas — the host supplies them — and keeps everything else, including that meta tag. Republishing means running it and publishing `dist/artifact.html`, never `index.html`.
 
 **Privacy is the product's stated promise.** The page tells the user nothing leaves the device and that passwords are never stored. Concretely:
 
