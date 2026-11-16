@@ -26,13 +26,14 @@ e o commit passou, e duas **engoliram as edições de uma terceira** em commits 
 não depois. Sessão só de leitura (responder pergunta, abrir o `index.html` no navegador) pode ficar no
 checkout principal.
 
-- 🏠 **Meça de onde o worktree saiu — aqui nada garante que foi do `HEAD` local.** No `linkedin` o ref
-  base é `head`, não `origin/main`, fixado em `.claude/settings.json` (`worktree.baseRef`), porque o
-  `origin` fica rotineiramente vários commits atrás e um worktree saído dele começaria de um repo velho,
-  **em silêncio**. ⚠️ **Este repo não tem `.claude/settings.json`** (medido 2026-11-15), logo vale o
-  default do harness — que o `uber_driver` registrou em 2026-11-13 como `fresh` (`origin/<default>`);
-  **não medido aqui**. ⇒ ao entrar no worktree, compare `git log --oneline -1` com o `main` local e, se
-  estiver atrás, `git merge main` antes da primeira edição.
+- 🏠 **O ref base é `head`, não `origin/main`** — fixado em
+  [`.claude/settings.json`](.claude/settings.json) (`worktree.baseRef`), como no `linkedin`. O `origin`
+  fica rotineiramente vários commits atrás, e o default do harness (`fresh`) tira o worktree de
+  `origin/<branch padrão>`: ele começaria de um repo velho, **em silêncio**.
+  ⚠️ **O arquivo foi criado em 2026-11-15 e o efeito ainda não foi medido aqui.** Uma sessão aberta
+  antes disso pode não o ter carregado, e `head` protege a **criação** do worktree, não os minutos
+  seguintes. ⇒ ao entrar no worktree, compare `git log --oneline -1` com o `main` local e, se estiver
+  atrás, `git merge main` antes da primeira edição.
 - **O worktree envelhece enquanto você trabalha — e ref base certo não protege disso.** Medido no
   `linkedin` em 2026-10-05: um worktree criado às **20:55** estava **8 commits atrás** às 21:1x, porque
   duas outras sessões aterraram no intervalo. ⇒ **antes de escrever depois de um trecho longo,
