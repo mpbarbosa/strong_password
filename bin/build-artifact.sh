@@ -8,6 +8,12 @@
 # essas linhas e deixa o resto intacto — <title>, <meta name="claude:...">,
 # <link>, <style> e o conteúdo.
 #
+# As tags de SEO também saem: descrição, canonical, Open Graph e Twitter card
+# falam com buscadores sobre a página publicada no GitHub Pages, e o artifact
+# é outra publicação, privada. Pelo mesmo motivo o <title> volta a ser só o
+# nome do site (lido de og:site_name): o título longo é para o resultado de
+# busca, e o artifact é nomeado pelo <title>.
+#
 #   bin/build-artifact.sh              # gera dist/artifact.html
 #   bin/build-artifact.sh -o -         # escreve na saída padrão
 #   bin/build-artifact.sh -o /tmp/a.html index.html
@@ -50,8 +56,20 @@ recorta() {
     # ficaria fora do <head> (ignorada) ou valeria contra o host, cujo runtime
     # ela não conhece — e o host já impõe a própria política.
     l ~ /^<meta[^>]*http-equiv=[^>]*content-security-policy/ { next }
+    # SEO: vale para a página publicada, não para o artifact. O nome do site
+    # é guardado antes de a linha sair, para virar o <title> do recorte.
+    l ~ /^<meta[^>]*property="og:site_name"/ {
+      if (match($0, /content="[^"]*"/)) nome = substr($0, RSTART + 9, RLENGTH - 10)
+      next
+    }
+    l ~ /^<meta[^>]*name="description"/ { next }
+    l ~ /^<link[^>]*rel="canonical"/    { next }
+    l ~ /^<meta[^>]*property="og:/      { next }
+    l ~ /^<meta[^>]*name="twitter:/     { next }
+    l ~ /^<title>.*<\/title>$/          { titulo = n + 0; tem_titulo = 1 }
     { linhas[n++] = $0 }
     END {
+      if (nome != "" && tem_titulo) linhas[titulo] = "<title>" nome "</title>"
       inicio = 0; fim = n - 1
       while (inicio <= fim && linhas[inicio] ~ /^[ \t]*$/) inicio++
       while (fim >= inicio && linhas[fim] ~ /^[ \t]*$/) fim--

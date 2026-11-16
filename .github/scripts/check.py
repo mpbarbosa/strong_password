@@ -21,6 +21,22 @@ from html.parser import HTMLParser
 FONT_HOSTS = ("fonts.googleapis.com", "fonts.gstatic.com")
 PREFS_KEY = "senha-forte-prefs"
 
+# O endereço público da página. Só pode aparecer nestas duas tags, escritas
+# exatamente assim: elas declaram o endereço aos buscadores e o navegador não
+# busca nenhuma das duas. Em qualquer outro lugar a guarda `urls` o reprova.
+SITE_URL = "https://mpbarbosa.github.io/strong_password/"
+SELF_REFERENCES = (
+    '<link rel="canonical" href="%s">' % SITE_URL,
+    '<meta property="og:url" content="%s">' % SITE_URL,
+)
+
+# O que os buscadores mostram: acima disto o resultado sai cortado.
+TITLE_MAX = 60
+DESCRIPTION_RANGE = (70, 160)
+# Metas que precisam existir uma vez só e com conteúdo.
+SEO_METAS = ("description", "og:type", "og:site_name", "og:locale", "og:title",
+             "og:description", "og:url", "twitter:card")
+
 # A política inteira é comparada por igualdade: afrouxar a CSP exige mexer aqui.
 CSP_TEMPLATE = (
     "default-src 'none'; "
@@ -162,6 +178,9 @@ def check_network(html):
 
 def check_urls(html):
     errors = []
+    # Uma vez cada: uma segunda cópia da tag sobra no texto e é reprovada.
+    for ref in SELF_REFERENCES:
+        html = html.replace(ref, "", 1)
     for m in re.finditer(r"(?:https?:)?//([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)", html):
         host = m.group(1).lower()
         if host not in FONT_HOSTS:
@@ -215,6 +234,86 @@ def check_theme(html):
     return []
 
 
+class _Head(HTMLParser):
+    """Recolhe o que um buscador lê: lang, <title>, metas, canonical e <h1>."""
+
+    def __init__(self):
+        HTMLParser.__init__(self, convert_charrefs=True)
+        self.langs = []
+        self.titles = []
+        self.metas = {}
+        self.canonicals = []
+        self.h1 = 0
+        self._in_title = False
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if tag == "html":
+            self.langs.append(a.get("lang"))
+        elif tag == "title":
+            self._in_title = True
+            self.titles.append("")
+        elif tag == "meta":
+            key = a.get("name") or a.get("property")
+            if key:
+                self.metas.setdefault(key.lower(), []).append(a.get("content") or "")
+        elif tag == "link" and (a.get("rel") or "").lower() == "canonical":
+            self.canonicals.append(a.get("href") or "")
+        elif tag == "h1":
+            self.h1 += 1
+
+    handle_startendtag = handle_starttag
+
+    def handle_endtag(self, tag):
+        if tag == "title":
+            self._in_title = False
+
+    def handle_data(self, data):
+        if self._in_title:
+            self.titles[-1] += data
+
+
+def check_seo(html):
+    head = _Head()
+    head.feed(html)
+    errors = []
+    if head.langs != ["pt-BR"]:
+        errors.append('esperado <html lang="pt-BR">')
+    if len(head.titles) != 1 or not head.titles[0].strip():
+        errors.append("esperado exatamente 1 <title> com texto")
+    elif len(head.titles[0].strip()) > TITLE_MAX:
+        errors.append("<title> com %d caracteres: o buscador corta acima de %d"
+                      % (len(head.titles[0].strip()), TITLE_MAX))
+    if head.h1 != 1:
+        errors.append("esperado exatamente 1 <h1>, encontrados %d" % head.h1)
+    for key in SEO_METAS:
+        values = head.metas.get(key, [])
+        if len(values) != 1:
+            errors.append("esperada exatamente 1 meta %s, encontradas %d" % (key, len(values)))
+        elif not values[0].strip():
+            errors.append("meta %s sem conteúdo" % key)
+    description = head.metas.get("description", [])
+    if len(description) == 1 and description[0].strip():
+        low, high = DESCRIPTION_RANGE
+        if not low <= len(description[0]) <= high:
+            errors.append("meta description com %d caracteres: o esperado é de %d a %d"
+                          % (len(description[0]), low, high))
+        # O mesmo texto em dois lugares: quem muda um e esquece o outro deixa
+        # o buscador e as redes sociais descrevendo a página de formas diferentes.
+        if head.metas.get("og:description", []) not in ([], description):
+            errors.append("og:description diverge da meta description")
+    if head.canonicals != [SITE_URL]:
+        errors.append("esperado exatamente 1 <link rel=\"canonical\"> para %s (tem: %s)"
+                      % (SITE_URL, ", ".join(head.canonicals) or "nenhum"))
+    if head.metas.get("og:url", []) not in ([], [SITE_URL]):
+        errors.append("og:url diverge do endereço canônico %s" % SITE_URL)
+    for key in ("robots", "googlebot"):
+        for value in head.metas.get(key, []):
+            if re.search(r"\b(noindex|none)\b", value, re.I):
+                errors.append('meta %s="%s" tira a página dos buscadores' % (key, value))
+    return errors
+
+
 GUARDS = [
     ("structure", check_structure),
     ("syntax", check_syntax),
@@ -224,6 +323,7 @@ GUARDS = [
     ("urls", check_urls),
     ("storage", check_storage),
     ("theme", check_theme),
+    ("seo", check_seo),
 ]
 
 

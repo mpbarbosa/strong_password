@@ -8,6 +8,7 @@ limite oposto: edições legítimas que não podem ser reprovadas.
 Uso: python3 .github/scripts/test_check.py [index.html]
 """
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -54,12 +55,69 @@ def second_dark_block(old, new):
     return mutate
 
 
+def tag(html, start):
+    """A linha inteira da tag que começa com `start`, com a quebra de linha."""
+    m = re.search(r"^%s[^\n]*\n" % re.escape(start), html, re.M)
+    if not m:
+        raise LookupError("tag não encontrada no index.html: %r" % start)
+    return m.group(0)
+
+
+def drop(start):
+    return lambda h: swap(h, tag(h, start), "")
+
+
+def twice(start):
+    return lambda h: swap(h, tag(h, start), tag(h, start) * 2)
+
+
+def attr(start, name, value):
+    """Mutação: troca o valor de um atributo na tag que começa com `start`."""
+    def mutate(html):
+        line = tag(html, start)
+        new = re.sub(r'%s="[^"]*"' % name, lambda m: '%s="%s"' % (name, value), line, count=1)
+        if new == line:
+            raise LookupError("atributo %s não encontrado em %r" % (name, start))
+        return swap(html, line, new)
+    return mutate
+
+
+def then(*mutations):
+    def mutate(html):
+        for m in mutations:
+            html = m(html)
+        return html
+    return mutate
+
+
+def head_line(line):
+    """Mutação: acrescenta uma linha ao <head>, logo antes do <title>."""
+    return lambda h: swap(h, "<title>", line + "\n<title>")
+
+
+def title(text):
+    return lambda h: swap(h, tag(h, "<title>"), "<title>%s</title>\n" % text)
+
+
+def description(text):
+    return then(attr('<meta name="description"', "content", text),
+                attr('<meta property="og:description"', "content", text))
+
+
 CASES = [
     # --- limite permissivo: nada disto pode ser reprovado -------------------
     ("página atual passa", lambda h: h, set()),
     ("comentário novo no script, CSP em dia", js("/* nota */"), set()),
     ("paleta escura reformatada sem mudar valores",
      second_dark_block("--bg: #0f1115;", "--bg:   #0f1115 ;"), set()),
+    ("descrição reescrita nos dois lugares",
+     description("Gerador de senhas aleatórias que roda no navegador e não envia nada a servidor algum."),
+     set()),
+    ("título no limite de tamanho", title("x" * check.TITLE_MAX), set()),
+    ("descrição no limite inferior", description("x" * check.DESCRIPTION_RANGE[0]), set()),
+    ("descrição no limite superior", description("x" * check.DESCRIPTION_RANGE[1]), set()),
+    ("meta robots que permite indexar",
+     head_line('<meta name="robots" content="index, follow">'), set()),
 
     # --- structure ----------------------------------------------------------
     ("handler inline", lambda h: swap(h, '<button', '<button onclick="x()"'), {"structure"}),
@@ -114,6 +172,11 @@ CASES = [
      lambda h: swap(h, "https://fonts.gstatic.com\" crossorigin",
                     "https://fonts.gstatic.com.evil.example\" crossorigin"),
      {"urls"}),
+    # O endereço do próprio site só vale nas duas tags que o declaram.
+    ("endereço do site dentro do script", js('var u = "%s";' % check.SITE_URL), {"urls"}),
+    ("imagem servida do próprio site",
+     lambda h: swap(h, "</body>", '<img src="%sp.gif" alt="">\n</body>' % check.SITE_URL),
+     {"urls"}),
 
     # --- storage ------------------------------------------------------------
     ("senha gravada em outra chave", js('localStorage.setItem("senha", current);'), {"storage"}),
@@ -138,6 +201,36 @@ CASES = [
      second_dark_block("--accent: #9db0ff;", "--accent: #000000;"), {"theme"}),
     ("declaração a menos no primeiro bloco",
      lambda h: swap(h, "      --sym: #f0a268;\n", ""), {"theme"}),
+
+    # --- seo ----------------------------------------------------------------
+    # Cada caso aciona UMA recusa da guarda; os valores relativos (href="/")
+    # chegam a ela sem esbarrar antes na guarda `urls`.
+    ("lang removido", lambda h: swap(h, '<html lang="pt-BR">', "<html>"), {"seo"}),
+    ("título removido", drop("<title>"), {"seo"}),
+    ("título vazio", title(" "), {"seo"}),
+    ("título acima do limite", title("x" * (check.TITLE_MAX + 1)), {"seo"}),
+    ("segundo h1", twice("    <h1>"), {"seo"}),
+    ("descrição removida", drop('<meta name="description"'), {"seo"}),
+    ("descrição abaixo do limite",
+     description("x" * (check.DESCRIPTION_RANGE[0] - 1)), {"seo"}),
+    ("descrição acima do limite",
+     description("x" * (check.DESCRIPTION_RANGE[1] + 1)), {"seo"}),
+    ("og:description diverge da descrição",
+     attr('<meta property="og:description"', "content", "Outra descrição da mesma página."),
+     {"seo"}),
+    ("og:title sem conteúdo", attr('<meta property="og:title"', "content", ""), {"seo"}),
+    ("og:locale duplicado", twice('<meta property="og:locale"'), {"seo"}),
+    ("twitter:card removido", drop('<meta name="twitter:card"'), {"seo"}),
+    ("canonical removido", drop('<link rel="canonical"'), {"seo"}),
+    ("canonical relativo", attr('<link rel="canonical"', "href", "/"), {"seo"}),
+    ("og:url diferente do canônico", attr('<meta property="og:url"', "content", "/outra/"),
+     {"seo"}),
+    ("noindex", head_line('<meta name="robots" content="noindex, follow">'), {"seo"}),
+    ("googlebot none", head_line('<meta name="googlebot" content="none">'), {"seo"}),
+    # Estes dois também quebram a exceção da guarda `urls`, e têm de quebrar.
+    ("canonical para outro domínio",
+     attr('<link rel="canonical"', "href", "https://evil.example/"), {"urls", "seo"}),
+    ("segunda tag canonical", twice('<link rel="canonical"'), {"urls", "seo"}),
 ]
 
 

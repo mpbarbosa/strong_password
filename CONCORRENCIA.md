@@ -87,7 +87,7 @@ que mude uma cópia enquanto outra muda a outra passa sem conflito e deixa os te
   🔧 **Corrigido em 2026-11-15:** este item dizia *"não há suíte nem linter aqui: a única conferência
   é o navegador"*. Deixou de valer no mesmo dia, quando o `check.py` aterrou (`e9286a6`).
   - **O `check.py` segura o que a página PROMETE, não o que ela faz.** São guardas nomeadas —
-    `structure`, `syntax`, `csp`, `random`, `network`, `urls`, `storage`, `theme` — e o que cada uma
+    `structure`, `syntax`, `csp`, `random`, `network`, `urls`, `storage`, `theme`, `seo` — e o que cada uma
     protege está no [`CLAUDE.md`](CLAUDE.md). Ele lê só o `index.html` e sai `1` se alguma reprovar.
     A `syntax` precisa do `node`: sem ele ela **reprova**, não pula.
   - ⚠️ **Verde no `check.py` não é página funcionando.** Ele não gera senha, não confere a leitura de
