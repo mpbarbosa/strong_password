@@ -1,0 +1,109 @@
+name: CI/CD
+
+# main é produção. Um PR roda só `check`; um push na main (ou um disparo manual
+# a partir dela) roda check -> deploy -> verify. Os jobs deploy e verify nunca
+# rodam em PR: um PR verde não diz nada sobre eles.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Um deploy em andamento na main não é cancelado; PRs antigos, sim.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: As guardas ainda reprovam o que deveriam (mutação)
+        run: python3 .github/scripts/test_check.py
+
+      - name: Guardas do index.html
+        run: python3 .github/scripts/check.py
+
+  deploy:
+    name: deploy
+    needs: check
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Montar o site (só o index.html)
+        run: |
+          mkdir _site
+          cp index.html _site/
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+  verify:
+    name: verify
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # O deploy "deu certo" quando o que está no ar é o arquivo deste commit,
+      # byte a byte. Falha fechado: sem prova, o job fica vermelho.
+      - name: Conferir que o publicado é o index.html deste commit
+        shell: bash
+        env:
+          PAGE_URL: ${{ needs.deploy.outputs.page_url }}
+        run: |
+          set -u
+          : "${PAGE_URL:?o job deploy não informou a URL publicada}"
+          attempts="${VERIFY_ATTEMPTS:-18}"
+          delay="${VERIFY_DELAY:-10}"
+          url="${PAGE_URL%/}/index.html"
+          want=$(sha256sum < index.html | cut -d' ' -f1)
+          live=$(mktemp)
+          i=1
+          while [ "$i" -le "$attempts" ]; do
+            if curl -fsSL --max-time 20 -o "$live" "${url}?v=${GITHUB_SHA}-${i}"; then
+              got=$(sha256sum < "$live" | cut -d' ' -f1)
+              if [ "$got" = "$want" ]; then
+                echo "OK: ${url} serve o index.html de ${GITHUB_SHA} (sha256 ${want})"
+                exit 0
+              fi
+              echo "tentativa ${i}/${attempts}: no ar ${got}, esperado ${want}"
+            else
+              echo "tentativa ${i}/${attempts}: não foi possível baixar ${url}"
+            fi
+            i=$((i + 1))
+            [ "$i" -le "$attempts" ] && sleep "$delay"
+          done
+          echo "::error::${url} não serve o index.html de ${GITHUB_SHA} após ${attempts} tentativas"
+          exit 1

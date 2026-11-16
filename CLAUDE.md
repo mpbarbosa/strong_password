@@ -8,7 +8,7 @@ A password generator delivered as one self-contained file, `index.html` (inline 
 
 ## Commands
 
-There is no package manifest, linter or test suite, and nothing to build before opening the page. The `.gitignore` is the stock Node template and does not reflect any tooling.
+There is no package manifest, and nothing to build before opening the page. The `.gitignore` is the stock Node template and does not reflect any tooling.
 
 To run it, open `index.html` in a browser or serve the directory statically:
 
@@ -21,6 +21,18 @@ The only script is `bin/build-artifact.sh`, which cuts `index.html` down to the 
 ```bash
 bin/build-artifact.sh
 ```
+
+The only checks are the guards in `.github/scripts/` (Python standard library, plus `node` for a syntax check). They read `index.html` and nothing else:
+
+```bash
+python3 .github/scripts/check.py          # what CI runs
+python3 .github/scripts/check.py --fix    # rewrite the CSP hash after editing the <script>
+python3 .github/scripts/test_check.py     # mutation suite: each guard must fail on its violation
+```
+
+## Delivery
+
+`.github/workflows/ci.yml` runs `check` on every pull request. A push to `main` then runs `deploy` (GitHub Pages, publishing `index.html` and nothing else) and `verify`, which downloads the live page and fails unless its SHA-256 equals the committed file's. `deploy` and `verify` never run on a pull request, so a green PR says nothing about them. Roll back with `git revert` on `main`. The site is https://mpbarbosa.github.io/strong_password/.
 
 ## Concurrent sessions
 
@@ -40,6 +52,8 @@ More than one Claude session may write to this repository at the same time. **Th
 - Randomness comes only from `crypto.getRandomValues` via `randInt()`, which uses rejection sampling to avoid modulo bias. Never introduce `Math.random` or a plain `% n`.
 - `localStorage` (key `senha-forte-prefs`) holds preferences only. Generated passwords live in the in-memory `current` string and `history` array (last 5) and must not be persisted or sent anywhere.
 - No network calls other than the font stylesheet.
+- A `<meta>` Content-Security-Policy makes the browser enforce this in the standalone page: `default-src 'none'`, the inline script allowed by its SHA-256 hash, styles inline or from Google Fonts. **Any edit to the `<script>` changes the hash** — run `check.py --fix`, or the browser refuses to run the script and the page shows no password. Inline event handlers (`onclick=`) are blocked too; use `addEventListener`. `bin/build-artifact.sh` drops this meta from the artifact fragment, where the host's policy applies instead.
+- `check.py` holds these promises as named guards (`random`, `network`, `urls`, `storage`, `csp`, `theme`, …) and compares the whole policy by equality, so loosening the CSP means editing `CSP_TEMPLATE` there. A new guard needs a case in `test_check.py` that fails without it.
 
 **Generation rules interact, and they degrade rather than fail** (all in `generate()`):
 
